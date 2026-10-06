@@ -60,15 +60,23 @@ def build_parser() -> argparse.ArgumentParser:
         prog="cipherbreak",
         description=(
             "A classical period-4 shift cipher (Vigenere family, not the WWII Enigma machine), "
-            "and three attacks that break it."
+            "and three attacks that break it. Not for real data: use AES-GCM instead."
         ),
+        epilog=(
+            "examples:\n"
+            '  cipherbreak encrypt --key 12345 --date 2026-10-06 "hello world"\n'
+            '  cipherbreak decrypt --key 12345 --date 2026-10-06 "kmvvrhfyutn"\n'
+            "  cipherbreak attack --method columns --ciphertext ct.txt\n"
+            "  cipherbreak attack --method known --ciphertext ct.txt --known-prefix four"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
     _add_cipher_command(sub, "encrypt")
     _add_cipher_command(sub, "decrypt")
     a = sub.add_parser(
         "attack",
-        help="recover the shifts and plaintext from a ciphertext file",
+        help="Recover the shifts and plaintext from a ciphertext file",
         description=(
             "Recover the shift tuple and plaintext. brute: score all 130,321 shift tuples. "
             "columns: break each of the 4 columns as a Caesar cipher (108 trials). "
@@ -76,11 +84,21 @@ def build_parser() -> argparse.ArgumentParser:
             "combinations instead."
         ),
     )
-    a.add_argument("--method", required=True, choices=["brute", "columns", "known"])
-    a.add_argument("--ciphertext", required=True, type=Path, metavar="FILE", help="UTF-8 file")
-    a.add_argument("--known-prefix", help="known plaintext prefix (required for --method known)")
     a.add_argument(
-        "--date", type=_parse_date, help="with --method known: derive offsets from this date"
+        "--method", required=True, choices=["brute", "columns", "known"], help="attack to run"
+    )
+    a.add_argument(
+        "--ciphertext", required=True, type=Path, metavar="FILE", help="UTF-8 ciphertext file"
+    )
+    a.add_argument(
+        "--known-prefix",
+        metavar="TEXT",
+        help="known plaintext prefix, at least 4 characters (required for --method known)",
+    )
+    a.add_argument(
+        "--date",
+        type=_parse_date,
+        help="with --method known: derive offsets from this date (YYYY-MM-DD)",
     )
     return parser
 
