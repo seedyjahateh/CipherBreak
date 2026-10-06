@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cipherbreak"
+version = "0.1.0"
+description = "Classical shift cipher, then broken three ways with measured attacks"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Seedy M. Jahateh" }]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=42",
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "hypothesis>=6.100",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+cipherbreak = "cipherbreak.cli:main"
+
+[tool.setuptools]
+packages = ["cipherbreak"]
+
+[tool.setuptools.package-data]
+cipherbreak = ["data/*.json", "py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["matplotlib", "matplotlib.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
