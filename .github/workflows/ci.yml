@@ -26,3 +26,5 @@ jobs:
         run: mypy --strict cipherbreak/
       - name: Tests
         run: pytest
+      - name: README results table matches summary.csv (FR-17)
+        run: python scripts/render_readme_table.py --check
