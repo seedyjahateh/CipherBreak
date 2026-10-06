@@ -54,7 +54,7 @@ def main() -> None:
         },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    OUT.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {OUT} from {total:,} symbols (sha256 {data['source_sha256']})")
 
 
