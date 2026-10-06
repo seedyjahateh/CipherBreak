@@ -11,8 +11,15 @@ import sys
 import warnings
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 
 from cipherbreak.alphabet import has_ascii_upper
+from cipherbreak.attacks import (
+    brute_force,
+    column_analysis,
+    known_plaintext,
+    known_plaintext_with_date,
+)
 from cipherbreak.cipher import CaseFoldWarning, Cipher
 
 type _SubParsers = argparse._SubParsersAction[argparse.ArgumentParser]
@@ -59,7 +66,56 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
     _add_cipher_command(sub, "encrypt")
     _add_cipher_command(sub, "decrypt")
+    a = sub.add_parser(
+        "attack",
+        help="recover the shifts and plaintext from a ciphertext file",
+        description=(
+            "Recover the shift tuple and plaintext. brute: score all 130,321 shift tuples. "
+            "columns: break each of the 4 columns as a Caesar cipher (108 trials). "
+            "known: subtract a known plaintext prefix; with --date, search the 10,000 key-digit "
+            "combinations instead."
+        ),
+    )
+    a.add_argument("--method", required=True, choices=["brute", "columns", "known"])
+    a.add_argument("--ciphertext", required=True, type=Path, metavar="FILE", help="UTF-8 file")
+    a.add_argument("--known-prefix", help="known plaintext prefix (required for --method known)")
+    a.add_argument(
+        "--date", type=_parse_date, help="with --method known: derive offsets from this date"
+    )
     return parser
+
+
+def _run_attack(args: argparse.Namespace) -> int:
+    try:
+        ciphertext = args.ciphertext.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"error: cannot read {args.ciphertext}: {exc.strerror}", file=sys.stderr)
+        return 2
+    if args.method != "known" and (args.known_prefix is not None or args.date is not None):
+        print("error: --known-prefix and --date only apply to --method known", file=sys.stderr)
+        return 2
+    try:
+        if args.method == "brute":
+            result = brute_force(ciphertext)
+        elif args.method == "columns":
+            result = column_analysis(ciphertext)
+        elif args.known_prefix is None:
+            print("error: --method known needs --known-prefix", file=sys.stderr)
+            return 2
+        elif args.date is not None:
+            result = known_plaintext_with_date(ciphertext, args.known_prefix, args.date)
+        else:
+            result = known_plaintext(ciphertext, args.known_prefix)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"method: {args.method}{' (with date)' if args.date is not None else ''}")
+    print(f"shifts: {list(result.shifts)}")
+    print(f"candidates tried: {result.candidates_tried:,}")
+    print(f"time: {result.seconds * 1000:.2f} ms")
+    print("plaintext:")
+    print(result.plaintext.rstrip("\n"))
+    return 0
 
 
 def _run_cipher(args: argparse.Namespace) -> int:
@@ -84,6 +140,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command in ("encrypt", "decrypt"):
         return _run_cipher(args)
+    if args.command == "attack":
+        return _run_attack(args)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 
